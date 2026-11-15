@@ -4,7 +4,8 @@ The Express REST API for Connectly. It provides authentication, profiles, posts,
 
 ## Features
 
-- REST API for authentication, users, profiles, posts, comments, likes, and follows
+- REST API for authentication, users, profiles, posts, threaded comment replies, likes, and follows
+- Paginated lists of users who liked each post
 - MongoDB persistence through the official MongoDB Node.js driver
 - JWT sessions in HttpOnly cookies
 - Image uploads forwarded to ImgBB

@@ -8,6 +8,7 @@ import {
   getFollowingFeedHandler,
   getPostCommentsHandler,
   getPostDetailHandler,
+  getPostLikesHandler,
   likePostHandler,
   unlikePostHandler,
   updatePostHandler,
@@ -28,6 +29,7 @@ postRouter.delete('/:id', requireAuth, deletePostHandler);
 
 postRouter.post('/:id/like', requireAuth, likePostHandler);
 postRouter.delete('/:id/like', requireAuth, unlikePostHandler);
+postRouter.get('/:id/likes', optionalAuth, getPostLikesHandler);
 
 postRouter.post('/:id/comments', requireAuth, addCommentHandler);
 postRouter.get('/:id/comments', optionalAuth, getPostCommentsHandler);

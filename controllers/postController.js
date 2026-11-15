@@ -238,6 +238,60 @@ export async function unlikePostHandler(req, res, next) {
   }
 }
 
+export async function getPostLikesHandler(req, res, next) {
+  try {
+    const postDoc = await getPostByIdOrThrow(String(req.params.id || ''));
+    const likes = Array.isArray(postDoc.likes) ? postDoc.likes : [];
+    const limit = Math.min(
+      100,
+      Math.max(1, Math.floor(Number(req.query.limit) || 50))
+    );
+    const skip = Math.max(0, Math.floor(Number(req.query.skip) || 0));
+    const likeIds = likes.slice(skip, skip + limit);
+    const cols = getCollections();
+    const users = likeIds.length
+      ? await cols.users
+          .find(
+            { _id: { $in: likeIds } },
+            {
+              projection: {
+                name: 1,
+                username: 1,
+                profilePicture: 1,
+              },
+            }
+          )
+          .toArray()
+      : [];
+    const usersById = new Map(
+      users.map((user) => [user._id.toHexString(), user])
+    );
+    const likers = likeIds.flatMap((id) => {
+      const liker = usersById.get(id.toHexString());
+      return liker
+        ? [
+            {
+              id: liker._id.toHexString(),
+              name: liker.name,
+              username: liker.username,
+              profilePicture: liker.profilePicture || '',
+            },
+          ]
+        : [];
+    });
+
+    res.json({
+      success: true,
+      likers,
+      total: likes.length,
+      nextSkip: skip + likeIds.length,
+      hasMore: skip + likeIds.length < likes.length,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function addCommentHandler(req, res, next) {
   try {
     if (!req.userId) {
@@ -249,10 +303,41 @@ export async function addCommentHandler(req, res, next) {
     }
     const postDoc = await getPostByIdOrThrow(String(req.params.id || ''));
 
-    const { content } = req.body || {};
+    const { content, parentCommentId } = req.body || {};
     const contentRes = validateCommentContent(content);
     if (!contentRes.valid) {
       throw new AppError(contentRes.error, 400);
+    }
+
+    const cols = getCollections();
+    let parentComment = null;
+    if (parentCommentId !== undefined && parentCommentId !== null) {
+      const parentOid = parseObjectId(parentCommentId);
+      if (!parentOid) {
+        throw new AppError(
+          'Invalid parent comment ID.',
+          400,
+          'INVALID_OBJECT_ID'
+        );
+      }
+      parentComment = await cols.comments.findOne({
+        _id: parentOid,
+        postId: postDoc._id,
+      });
+      if (!parentComment) {
+        throw new AppError(
+          'The comment you are replying to was not found.',
+          404,
+          'COMMENT_NOT_FOUND'
+        );
+      }
+      if (parentComment.parentCommentId) {
+        throw new AppError(
+          'Replies can only be added to top-level comments.',
+          400,
+          'INVALID_COMMENT_PARENT'
+        );
+      }
     }
 
     const newComment = {
@@ -262,8 +347,7 @@ export async function addCommentHandler(req, res, next) {
       content: contentRes.value,
       createdAt: new Date(),
     };
-
-    const cols = getCollections();
+    if (parentComment) newComment.parentCommentId = parentComment._id;
     await cols.comments.insertOne(newComment);
 
     const [hydrated] = await hydrateComments([newComment]);
@@ -324,6 +408,10 @@ export async function deleteCommentHandler(req, res, next) {
       );
     }
 
+    await cols.comments.updateMany(
+      { parentCommentId: comment._id },
+      { $unset: { parentCommentId: '' } }
+    );
     await cols.comments.deleteOne({ _id: comment._id });
     const commentsCount = await cols.comments.countDocuments({
       postId: comment.postId,

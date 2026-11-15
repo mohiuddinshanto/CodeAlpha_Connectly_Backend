@@ -87,6 +87,7 @@ export async function hydrateComments(comments) {
   return comments.map((comment) => ({
     id: comment._id.toHexString(),
     postId: comment.postId.toHexString(),
+    parentCommentId: comment.parentCommentId?.toHexString() || null,
     content: comment.content,
     createdAt:
       comment.createdAt instanceof Date

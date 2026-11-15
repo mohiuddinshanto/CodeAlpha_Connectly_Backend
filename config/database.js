@@ -13,6 +13,7 @@ async function ensureIndexes() {
   await cols.posts.createIndex({ authorId: 1, createdAt: -1 });
   await cols.posts.createIndex({ createdAt: -1 });
   await cols.comments.createIndex({ postId: 1 });
+  await cols.comments.createIndex({ parentCommentId: 1 });
   await cols.follows.createIndex(
     { followerId: 1, followingId: 1 },
     { unique: true }
