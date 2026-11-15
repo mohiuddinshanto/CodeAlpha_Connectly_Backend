@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   isValidObjectIdHex,
   validateBio,
+  validateChatMessageContent,
   validateCommentContent,
   validateEmail,
   validateFullName,
@@ -61,6 +62,15 @@ test('validateCommentContent rejects blank comments', () => {
   assert.equal(validateCommentContent('   ').valid, false);
   assert.equal(validateCommentContent('Great insights!').valid, true);
   assert.equal(validateCommentContent('a'.repeat(501)).valid, false);
+});
+
+test('validateChatMessageContent trims messages and enforces a 2,000 character limit', () => {
+  assert.deepEqual(validateChatMessageContent('  hello  '), {
+    valid: true,
+    value: 'hello',
+  });
+  assert.equal(validateChatMessageContent('   ').valid, false);
+  assert.equal(validateChatMessageContent('x'.repeat(2001)).valid, false);
 });
 
 test('validateImageFile checks mime type and 5MB size limit', () => {

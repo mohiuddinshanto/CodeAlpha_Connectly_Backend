@@ -14,6 +14,17 @@ async function ensureIndexes() {
   await cols.posts.createIndex({ createdAt: -1 });
   await cols.comments.createIndex({ postId: 1 });
   await cols.comments.createIndex({ parentCommentId: 1 });
+  await cols.friendships.createIndex({ pairKey: 1 }, { unique: true });
+  await cols.friendships.createIndex({ requesterId: 1, status: 1, createdAt: -1 });
+  await cols.friendships.createIndex({ recipientId: 1, status: 1, createdAt: -1 });
+  await cols.messages.createIndex({ conversationId: 1, createdAt: -1, _id: -1 });
+  await cols.messages.createIndex(
+    { senderId: 1, clientMessageId: 1 },
+    {
+      unique: true,
+      partialFilterExpression: { clientMessageId: { $type: 'string' } },
+    }
+  );
   await cols.follows.createIndex(
     { followerId: 1, followingId: 1 },
     { unique: true }
@@ -75,6 +86,8 @@ export function getCollections() {
     posts: cachedDb.collection('posts'),
     comments: cachedDb.collection('comments'),
     follows: cachedDb.collection('follows'),
+    friendships: cachedDb.collection('friendships'),
+    messages: cachedDb.collection('messages'),
   };
 }
 

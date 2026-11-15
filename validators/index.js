@@ -132,6 +132,23 @@ export function validateCommentContent(content) {
   return { valid: true, value: trimmed };
 }
 
+export function validateChatMessageContent(content) {
+  if (typeof content !== 'string') {
+    return { valid: false, error: 'Message cannot be empty.' };
+  }
+  const trimmed = content.trim();
+  if (!trimmed) {
+    return { valid: false, error: 'Message cannot be empty.' };
+  }
+  if (trimmed.length > 2000) {
+    return {
+      valid: false,
+      error: 'Message cannot exceed 2,000 characters.',
+    };
+  }
+  return { valid: true, value: trimmed };
+}
+
 export function validateImageFile(mimeType, byteLength) {
   if (!ALLOWED_IMAGE_MIME_TYPES.has(mimeType.toLowerCase())) {
     return {

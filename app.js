@@ -6,6 +6,8 @@ import { env } from './config/env.js';
 import { AppError, errorHandler } from './middleware/errorHandler.js';
 import { createOriginGuard } from './middleware/originGuard.js';
 import authRoutes from './routes/authRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
+import friendRoutes from './routes/friendRoutes.js';
 import { commentRouter, postRouter } from './routes/postRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 
@@ -70,6 +72,8 @@ app.get('/api/health', (_req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/chats', chatRoutes);
+app.use('/api/friends', friendRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/posts', postRouter);
 app.use('/api/comments', commentRouter);

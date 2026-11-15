@@ -1,10 +1,11 @@
 # Connectly — Backend API
 
-The Express REST API for Connectly. It provides authentication, profiles, posts, comments, follows, and image uploads. The frontend lives in a separate repository.
+The Express API for Connectly. It provides authentication, profiles, posts, comments, follows, friend requests, real-time chat, and image uploads. The frontend lives in a separate repository.
 
 ## Features
 
-- REST API for authentication, users, profiles, posts, threaded comment replies, likes, and follows
+- REST API for authentication, users, profiles, posts, threaded comment replies, likes, follows, and friend requests
+- Persistent one-to-one messages for accepted friends, delivered in real time over WebSockets
 - Paginated lists of users who liked each post
 - MongoDB persistence through the official MongoDB Node.js driver
 - JWT sessions in HttpOnly cookies
@@ -76,6 +77,8 @@ This repository includes Vercel function handlers under `api/` for the `/api` en
 - `IMGBB_API_KEY`: required only if image uploads are enabled.
 
 Allow the Vercel deployment to reach the MongoDB Atlas cluster, then redeploy after changing environment variables. `/api/health` returns the database mode when the database is reachable and a JSON `503` response when server configuration or MongoDB is unavailable.
+
+The `/api/ws` WebSocket function is kept outside the REST rewrite. It uses short-lived tickets issued by `/api/chats/socket-ticket` and MongoDB change streams to deliver messages between Vercel instances. The frontend's `/ws` rewrite proxies WebSocket upgrades to this endpoint.
 
 ### Other Node.js hosts
 

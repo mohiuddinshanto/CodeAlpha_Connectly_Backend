@@ -2,8 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "source": "/api/:path*",
+      "source": "/api/:path((?!ws$).*)",
       "destination": "/api/index?__connectly_path=:path*"
     }
-  ]
+  ],
+  "functions": {
+    "api/ws.js": {
+      "maxDuration": 300
+    }
+  }
 }
