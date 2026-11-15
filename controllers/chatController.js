@@ -3,7 +3,9 @@ import { env } from '../config/env.js';
 import { AppError } from '../middleware/errorHandler.js';
 import {
   getConversationDetails,
+  getUnreadMessageCounts,
   listConversationMessages,
+  markConversationRead,
 } from '../services/chatService.js';
 
 export function buildChatSocketUrl(hostValue) {
@@ -41,6 +43,27 @@ export async function getChatMessagesHandler(req, res, next) {
       req.userId,
       req.params.conversationId,
       { limit, skip }
+    );
+    res.json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getUnreadMessageCountsHandler(req, res, next) {
+  try {
+    const result = await getUnreadMessageCounts(req.userId);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function markConversationReadHandler(req, res, next) {
+  try {
+    const result = await markConversationRead(
+      req.userId,
+      req.params.conversationId
     );
     res.json({ success: true, ...result });
   } catch (err) {

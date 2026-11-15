@@ -1,5 +1,6 @@
 import { getCollections, parseObjectId } from '../config/database.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { getUnreadCountsByConversation } from './chatService.js';
 
 export function createFriendshipPairKey(firstId, secondId) {
   return [firstId.toString(), secondId.toString()].sort().join(':');
@@ -64,6 +65,10 @@ export async function listFriends(userId) {
     })
     .sort({ acceptedAt: -1 })
     .toArray();
+  const unreadByConversation = await getUnreadCountsByConversation(
+    userObjectId.toHexString(),
+    relationships.map((relationship) => relationship._id)
+  );
 
   const friendIds = relationships.map((relationship) =>
     relationship.requesterId.equals(userObjectId)
@@ -83,6 +88,8 @@ export async function listFriends(userId) {
       return {
         conversationId: relationship._id.toHexString(),
         acceptedAt: relationship.acceptedAt,
+        unreadCount:
+          unreadByConversation.get(relationship._id.toHexString()) || 0,
         user: friend,
       };
     })

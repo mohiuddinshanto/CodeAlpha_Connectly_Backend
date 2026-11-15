@@ -6,6 +6,7 @@ The Express API for Connectly. It provides authentication, profiles, posts, comm
 
 - REST API for authentication, users, profiles, posts, threaded comment replies, likes, follows, and friend requests
 - Persistent one-to-one messages for accepted friends, delivered in real time over WebSockets
+- Persistent per-recipient read state, total/per-conversation unread counts, and mark-read support
 - Paginated lists of users who liked each post
 - MongoDB persistence through the official MongoDB Node.js driver
 - JWT sessions in HttpOnly cookies
@@ -57,7 +58,7 @@ Never commit `.env` or put private values in the frontend's `NEXT_PUBLIC_*` vari
 
 ## Tests
 
-Run the backend validator tests:
+Run the backend API, chat, Vercel-routing, and validator tests:
 
 ```bash
 npm test
@@ -80,6 +81,22 @@ Allow the Vercel deployment to reach the MongoDB Atlas cluster, then redeploy af
 
 The `/api/ws` WebSocket function is kept outside the REST rewrite. It uses short-lived tickets and the direct backend socket URL returned by `/api/chats/socket-ticket`, plus MongoDB change streams to deliver messages between Vercel instances.
 
+### Chat endpoints
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/api/friends` | List accepted friends with per-conversation unread counts |
+| `GET` | `/api/chats/unread-count` | Return total and per-conversation unread counts |
+| `POST` | `/api/chats/:conversationId/read` | Mark incoming messages in an accepted conversation as read |
+| `GET` | `/api/chats/:conversationId` | Get conversation details |
+| `GET` | `/api/chats/:conversationId/messages` | Get paginated message history |
+| `POST` | `/api/chats/socket-ticket` | Issue a short-lived ticket for WebSocket authentication |
+| `WS` | `/api/ws` | Subscribe to accepted conversations and receive real-time messages |
+
+New messages record their recipient. Older messages without a recipient are attributed to the other participant based on the conversation and remain unread until marked read. Read endpoints only update messages sent by the other participant in an accepted conversation.
+
+The `messages` collection is indexed by conversation/time, idempotent sender/client-message ID, and recipient/read-state/conversation for history and unread-count queries.
+
 ### Other Node.js hosts
 
 For a host that supports a persistent Express server, set the service root to the backend repository root, install dependencies with `npm install`, and use `npm start` as the start command. Configure the environment variables in the host dashboard and use a production MongoDB connection string.
@@ -90,8 +107,8 @@ For a host that supports a persistent Express server, set the service root to th
 | --- | --- |
 | `npm run dev` | Start the API with Node's watch mode |
 | `npm start` | Start the API for production |
-| `npm test` | Run backend validator tests |
+| `npm test` | Run backend API, chat, Vercel-routing, and validation tests |
 
 ## Tech stack
 
-Node.js · Express · MongoDB Native Driver · JWT · bcryptjs · Busboy · ImgBB
+Node.js · Express · MongoDB Native Driver · JWT · WebSockets · bcryptjs · Busboy · ImgBB

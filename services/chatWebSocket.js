@@ -129,6 +129,7 @@ async function handleSocketMessage(socket, rawData) {
       }
       sendJson(socket, {
         type: 'subscription_error',
+        ...(conversationId ? { conversationId } : {}),
         error:
           err instanceof AppError
             ? err.message

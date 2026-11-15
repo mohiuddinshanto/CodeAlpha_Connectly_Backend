@@ -44,6 +44,90 @@ export async function getAcceptedFriendshipOrThrow(userId, conversationId) {
   return friendship;
 }
 
+export async function getUnreadCountsByConversation(userId, conversationIds) {
+  const userObjectId = parseObjectId(userId);
+  if (!userObjectId) {
+    throw new AppError('Invalid user ID.', 400, 'INVALID_OBJECT_ID');
+  }
+  if (conversationIds.length === 0) return new Map();
+
+  const cols = getCollections();
+  const unreadCounts = await cols.messages
+    .aggregate([
+      {
+        $match: {
+          conversationId: { $in: conversationIds },
+          senderId: { $ne: userObjectId },
+          readAt: null,
+          $or: [
+            { recipientId: userObjectId },
+            { recipientId: { $exists: false } },
+          ],
+        },
+      },
+      { $group: { _id: '$conversationId', unreadCount: { $sum: 1 } } },
+    ])
+    .toArray();
+
+  return new Map(
+    unreadCounts.map((entry) => [entry._id.toHexString(), entry.unreadCount])
+  );
+}
+
+export async function getUnreadMessageCounts(userId) {
+  const userObjectId = parseObjectId(userId);
+  if (!userObjectId) {
+    throw new AppError('Invalid user ID.', 400, 'INVALID_OBJECT_ID');
+  }
+
+  const cols = getCollections();
+  const friendships = await cols.friendships
+    .find({
+      status: 'accepted',
+      $or: [{ requesterId: userObjectId }, { recipientId: userObjectId }],
+    })
+    .project({ _id: 1 })
+    .toArray();
+  const unreadByConversation = await getUnreadCountsByConversation(
+    userObjectId.toHexString(),
+    friendships.map((friendship) => friendship._id)
+  );
+  const conversations = friendships.map((friendship) => ({
+    conversationId: friendship._id.toHexString(),
+    unreadCount: unreadByConversation.get(friendship._id.toHexString()) || 0,
+  }));
+
+  return {
+    unreadCount: conversations.reduce(
+      (total, conversation) => total + conversation.unreadCount,
+      0
+    ),
+    conversations,
+  };
+}
+
+export async function markConversationRead(userId, conversationId) {
+  const userObjectId = parseObjectId(userId);
+  const friendship = await getAcceptedFriendshipOrThrow(
+    userId,
+    conversationId
+  );
+  const result = await getCollections().messages.updateMany(
+    {
+      conversationId: friendship._id,
+      senderId: { $ne: userObjectId },
+      readAt: null,
+      $or: [
+        { recipientId: userObjectId },
+        { recipientId: { $exists: false } },
+      ],
+    },
+    { $set: { readAt: new Date() } }
+  );
+
+  return { markedCount: result.modifiedCount };
+}
+
 export async function getConversationDetails(userId, conversationId) {
   const friendship = await getAcceptedFriendshipOrThrow(
     userId,
@@ -151,6 +235,9 @@ export async function createChatMessage(
   const message = {
     conversationId: friendship._id,
     senderId: senderObjectId,
+    recipientId: friendship.requesterId.equals(senderObjectId)
+      ? friendship.recipientId
+      : friendship.requesterId,
     content: contentResult.value,
     createdAt: new Date(),
     ...(clientMessageId ? { clientMessageId } : {}),
