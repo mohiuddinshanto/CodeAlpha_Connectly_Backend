@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeApiPath } from './vercel.js';
+import { normalizeApiPath } from './api-handler.js';
 
 test('normalizeApiPath prefixes Vercel function paths with /api', () => {
   assert.equal(normalizeApiPath('/health'), '/api/health');

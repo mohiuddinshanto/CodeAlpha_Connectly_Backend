@@ -1,1 +1,1 @@
-export { default } from '../vercel.js';
+export { default } from '../api-handler.js';

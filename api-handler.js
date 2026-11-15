@@ -13,7 +13,7 @@ export function normalizeApiPath(url = '/') {
   return `/api${path === '/' ? '' : path}${query}`;
 }
 
-export default function vercelHandler(req, res) {
+export default function apiHandler(req, res) {
   req.url = normalizeApiPath(req.url);
   app(req, res);
 }
