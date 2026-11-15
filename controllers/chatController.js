@@ -6,6 +6,21 @@ import {
   listConversationMessages,
 } from '../services/chatService.js';
 
+export function buildChatSocketUrl(hostValue) {
+  const host = String(hostValue || '')
+    .replace(/^https?:\/\//i, '')
+    .split('/')[0];
+  if (!/^[a-z0-9.-]+(?::\d+)?$/i.test(host)) {
+    throw new AppError(
+      'Chat connection is not configured.',
+      503,
+      'CHAT_UNAVAILABLE'
+    );
+  }
+  const protocol = /^(localhost|127\.)/i.test(host) ? 'ws' : 'wss';
+  return `${protocol}://${host}/api/ws`;
+}
+
 export async function getChatDetailsHandler(req, res, next) {
   try {
     const conversation = await getConversationDetails(
@@ -43,23 +58,12 @@ export function createChatSocketTicketHandler(req, res, next) {
       env.jwtSecret,
       { expiresIn: '60s' }
     );
-    const hostValue =
+    const socketUrl = buildChatSocketUrl(
       process.env.VERCEL_PROJECT_PRODUCTION_URL ||
       process.env.VERCEL_URL ||
-      req.headers.host ||
-      '';
-    const host = String(hostValue)
-      .replace(/^https?:\/\//i, '')
-      .split('/')[0];
-    if (!/^[a-z0-9.-]+(?::\d+)?$/i.test(host)) {
-      throw new AppError(
-        'Chat connection is not configured.',
-        503,
-        'CHAT_UNAVAILABLE'
-      );
-    }
-    const protocol = /^(localhost|127\.)/i.test(host) ? 'ws' : 'wss';
-    res.json({ success: true, ticket, socketUrl: `${protocol}://${host}/api/ws` });
+      req.headers.host
+    );
+    res.json({ success: true, ticket, socketUrl });
   } catch (err) {
     next(err);
   }

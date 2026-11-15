@@ -223,6 +223,10 @@ export function attachChatWebSocket(server) {
       return;
     }
     const userId = userObjectId.toHexString();
+    const queuedMessages = [];
+    let initialized = false;
+    socket.userId = userId;
+    socket.subscriptions = new Set();
     socket.on('close', () => {
       const userSockets = socketsByUserId.get(userId);
       if (!userSockets) return;
@@ -231,6 +235,20 @@ export function attachChatWebSocket(server) {
     });
     socket.on('error', (err) => {
       console.warn('[Chat WS] Client connection error:', err.message);
+    });
+    socket.on('message', (data) => {
+      if (!initialized) {
+        if (queuedMessages.length >= 5) {
+          socket.close(1008, 'Too many messages during connection setup');
+          return;
+        }
+        queuedMessages.push(data);
+        return;
+      }
+      handleSocketMessage(socket, data).catch((err) => {
+        console.error('[Chat WS] Request failed:', err);
+        sendSocketError(socket, 'Chat service temporarily unavailable.');
+      });
     });
 
     connectDatabase()
@@ -243,19 +261,18 @@ export function attachChatWebSocket(server) {
 
         await ensureMessageChangeStream();
         if (socket.readyState !== WebSocket.OPEN) return;
-        socket.userId = userId;
-        socket.subscriptions = new Set();
         if (!socketsByUserId.has(userId)) {
           socketsByUserId.set(userId, new Set());
         }
         socketsByUserId.get(userId).add(socket);
+        initialized = true;
         sendJson(socket, { type: 'ready' });
-        socket.on('message', (data) => {
+        for (const data of queuedMessages) {
           handleSocketMessage(socket, data).catch((err) => {
             console.error('[Chat WS] Request failed:', err);
             sendSocketError(socket, 'Chat service temporarily unavailable.');
           });
-        });
+        }
       })
       .catch((err) => {
         console.error('[Chat WS] Connection initialization failed:', err);
