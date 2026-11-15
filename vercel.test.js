@@ -11,3 +11,12 @@ test('normalizeApiPath leaves already-prefixed API paths unchanged', () => {
   assert.equal(normalizeApiPath('/api/health'), '/api/health');
   assert.equal(normalizeApiPath('/api?check=1'), '/api?check=1');
 });
+
+test('normalizeApiPath restores rewritten nested paths', () => {
+  assert.equal(
+    normalizeApiPath(
+      '/api/index?__connectly_path=auth%2Fregister&next=1'
+    ),
+    '/api/auth/register?next=1'
+  );
+});
