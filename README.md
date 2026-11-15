@@ -78,7 +78,7 @@ This repository includes Vercel function handlers under `api/` for the `/api` en
 
 Allow the Vercel deployment to reach the MongoDB Atlas cluster, then redeploy after changing environment variables. `/api/health` returns the database mode when the database is reachable and a JSON `503` response when server configuration or MongoDB is unavailable.
 
-The `/api/ws` WebSocket function is kept outside the REST rewrite. It uses short-lived tickets issued by `/api/chats/socket-ticket` and MongoDB change streams to deliver messages between Vercel instances. The frontend's `/ws` rewrite proxies WebSocket upgrades to this endpoint.
+The `/api/ws` WebSocket function is kept outside the REST rewrite. It uses short-lived tickets and the direct backend socket URL returned by `/api/chats/socket-ticket`, plus MongoDB change streams to deliver messages between Vercel instances.
 
 ### Other Node.js hosts
 

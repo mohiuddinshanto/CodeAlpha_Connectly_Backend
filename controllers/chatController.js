@@ -43,7 +43,23 @@ export function createChatSocketTicketHandler(req, res, next) {
       env.jwtSecret,
       { expiresIn: '60s' }
     );
-    res.json({ success: true, ticket });
+    const hostValue =
+      process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+      process.env.VERCEL_URL ||
+      req.headers.host ||
+      '';
+    const host = String(hostValue)
+      .replace(/^https?:\/\//i, '')
+      .split('/')[0];
+    if (!/^[a-z0-9.-]+(?::\d+)?$/i.test(host)) {
+      throw new AppError(
+        'Chat connection is not configured.',
+        503,
+        'CHAT_UNAVAILABLE'
+      );
+    }
+    const protocol = /^(localhost|127\.)/i.test(host) ? 'ws' : 'wss';
+    res.json({ success: true, ticket, socketUrl: `${protocol}://${host}/api/ws` });
   } catch (err) {
     next(err);
   }
