@@ -21,39 +21,44 @@ async function ensureIndexes() {
 }
 
 export async function connectDatabase() {
-  if (initPromise) return initPromise;
+  const pending =
+    initPromise ||
+    (initPromise = (async () => {
+      const mongoUri = env.mongoUri ? env.mongoUri.trim() : '';
+      if (!mongoUri) {
+        throw new Error(
+          'MONGODB_URI is required. Set MONGODB_URI in backend/.env to connect to MongoDB.'
+        );
+      }
 
-  initPromise = (async () => {
-    const mongoUri = env.mongoUri ? env.mongoUri.trim() : '';
-    if (!mongoUri) {
-      throw new Error(
-        'MONGODB_URI is required. Set MONGODB_URI in backend/.env to connect to MongoDB.'
-      );
-    }
+      const client = new MongoClient(mongoUri, {
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 5000,
+      });
 
-    const client = new MongoClient(mongoUri, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 5000,
-    });
+      try {
+        await client.connect();
+        const db = client.db(env.mongoDbName);
+        await db.command({ ping: 1 });
+        mongoClient = client;
+        cachedDb = db;
+        await ensureIndexes();
+        console.log(`[DB] Connected to MongoDB (${env.mongoDbName})`);
+      } catch (err) {
+        await client.close().catch(() => {});
+        mongoClient = null;
+        cachedDb = null;
+        const message = err instanceof Error ? err.message : String(err);
+        throw new Error(`Failed to initialize MongoDB (${message}).`);
+      }
+    })());
 
-    try {
-      await client.connect();
-      await client.db(env.mongoDbName).command({ ping: 1 });
-      mongoClient = client;
-      cachedDb = client.db(env.mongoDbName);
-      console.log(`[DB] Connected to MongoDB (${env.mongoDbName})`);
-    } catch (err) {
-      await client.close().catch(() => {});
-      const message = err instanceof Error ? err.message : String(err);
-      throw new Error(
-        `Failed to connect to MongoDB at MONGODB_URI (${message}).`
-      );
-    }
-
-    await ensureIndexes();
-  })();
-
-  return initPromise;
+  try {
+    return await pending;
+  } catch (err) {
+    if (initPromise === pending) initPromise = null;
+    throw err;
+  }
 }
 
 export function getDbMode() {
@@ -87,4 +92,5 @@ export async function closeDatabase() {
     mongoClient = null;
     cachedDb = null;
   }
+  initPromise = null;
 }

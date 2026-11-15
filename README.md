@@ -49,7 +49,7 @@ The API listens on `http://localhost:5000`. Check `http://localhost:5000/api/hea
 | `JWT_SECRET` | Yes | Long, random private secret used to sign session tokens. |
 | `CLIENT_URL` | Yes | Exact frontend origin, such as `http://localhost:3000` or `https://connectly.example.com`. Multiple comma-separated origins are supported. |
 | `CROSS_SITE_COOKIES` | No | Set to `true` when the frontend and API are on different sites. Requires HTTPS. Defaults to `false`. |
-| `IMGBB_API_KEY` | Yes | Private ImgBB API key used for image uploads. |
+| `IMGBB_API_KEY` | No | Private ImgBB API key required for image uploads. Other API routes can run without it. |
 
 Never commit `.env` or put private values in the frontend's `NEXT_PUBLIC_*` variables. Configure production values in your hosting provider's environment settings.
 
@@ -63,9 +63,22 @@ npm test
 
 ## Deploy
 
-Deploy this directory as a Node.js service on a host that supports a persistent Express server. Set the service root to the backend repository root, install dependencies with `npm install`, and use `npm start` as the start command. Set the environment variables in the host dashboard and use a production MongoDB connection string.
+### Vercel
 
-The current entry point starts the server with `app.listen()`, so it is intended for a long-running Node.js host. It is not directly deploy-ready as a Vercel Function; that requires adapting the server entry point to Vercel's serverless function model. Once deployed, set `CLIENT_URL` to the frontend's exact HTTPS origin and `CROSS_SITE_COOKIES=true` when the sites are cross-site.
+This repository includes Vercel function handlers under `api/` for the `/api` endpoints. Set the Vercel project root to this backend directory and configure these environment variables in the Vercel project settings:
+
+- `MONGODB_URI`: a reachable MongoDB Atlas connection string; `127.0.0.1` and `localhost` refer to the Vercel function itself and will not work.
+- `MONGODB_DB_NAME`: `connectly` (or your chosen database name).
+- `JWT_SECRET`: a long, random private value.
+- `CLIENT_URL`: the exact production frontend origin(s), comma-separated.
+- `CROSS_SITE_COOKIES`: set to `true` when the frontend and API are on different sites.
+- `IMGBB_API_KEY`: required only if image uploads are enabled.
+
+Allow the Vercel deployment to reach the MongoDB Atlas cluster, then redeploy after changing environment variables. `/api/health` returns the database mode when the database is reachable and a JSON `503` response when server configuration or MongoDB is unavailable.
+
+### Other Node.js hosts
+
+For a host that supports a persistent Express server, set the service root to the backend repository root, install dependencies with `npm install`, and use `npm start` as the start command. Configure the environment variables in the host dashboard and use a production MongoDB connection string.
 
 ## Scripts
 
