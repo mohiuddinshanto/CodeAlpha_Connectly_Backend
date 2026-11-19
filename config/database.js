@@ -1,5 +1,6 @@
 import { MongoClient, ObjectId } from 'mongodb';
 import { env } from './env.js';
+import { ensureDemoAccount } from '../services/demoAccount.js';
 
 let mongoClient = null;
 let cachedDb = null;
@@ -60,6 +61,7 @@ export async function connectDatabase() {
         mongoClient = client;
         cachedDb = db;
         await ensureIndexes();
+        await ensureDemoAccount();
         console.log(`[DB] Connected to MongoDB (${env.mongoDbName})`);
       } catch (err) {
         await client.close().catch(() => {});
